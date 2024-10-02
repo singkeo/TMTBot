@@ -59,8 +59,6 @@ def ParseSignal(signal: str) -> dict:
     signal = [line.rstrip() for line in signal]
 
     trade = {}
-
-    update.effective_message.reply_text(signal[0].lower())
     
     # determines the order type of the trade
     if('Buy Limit'.lower() in signal[0].lower()):
@@ -97,8 +95,6 @@ def ParseSignal(signal: str) -> dict:
         # COMMENTMIKA trade['Entry'] = (signal[1].split())[-1]
         # If it's a Buy/Sell signal, it's going to be "NOW" anyway
         trade['Entry'] = 'NOW'
-        trade['StopLoss'] = float((signal[2].split())[-1]) - 20.0 # COMMENTMIKA We have to update the 20.0 by an env variable
-        trade['TP'] = [float((signal[3].split())[-1])] - 20.0 # COMMENTMIKA We have to update the 20.0 by an env variable
     
     else:
         trade['Entry'] = float((signal[1].split())[-1])

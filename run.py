@@ -146,7 +146,8 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     table = CreateTable(trade, balance, stopLossPips, takeProfitPips)
     
     # sends user trade information and calcualted risk
-    update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
+    # COMMENTMIKA update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
+    update.effective_message.reply_text("Cooking... 👀😏")
 
     return
 
@@ -236,7 +237,8 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
         # obtains account information from MetaTrader server
         account_information = await connection.get_account_information()
 
-        update.effective_message.reply_text("Successfully connected to MetaTrader!\nCalculating trade risk ... 🤔")
+        # COMMENTMIKA update.effective_message.reply_text("Successfully connected to MetaTrader!\nCalculating trade risk ... 🤔")
+        update.effective_message.reply_text("Successfully connected to MetaTrader! 👌🏼")
 
         # checks if the order is a market execution to get the current price of symbol
         if(trade['Entry'] == 'NOW'):
@@ -330,7 +332,8 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
 
             # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
-            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... \n(May take a while) ⏰")
+            # COMMENTMIKA update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... \n(May take a while) ⏰")
+            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
         
         except Exception as error:
             logger.error(f'Error: {error}')
@@ -369,7 +372,8 @@ def CalculateTrade(update: Update, context: CallbackContext) -> int:
 
             # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
-            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... (May take a while) ⏰")
+            # COMMENTMIKA update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... (May take a while) ⏰")
+        update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
         
         except Exception as error:
             logger.error(f'Error: {error}')

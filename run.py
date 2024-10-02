@@ -373,7 +373,7 @@ def CalculateTrade(update: Update, context: CallbackContext) -> int:
             # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
             # COMMENTMIKA update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... (May take a while) ⏰")
-        update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
+            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
         
         except Exception as error:
             logger.error(f'Error: {error}')

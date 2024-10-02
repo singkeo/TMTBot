@@ -284,17 +284,17 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 update.effective_message.reply_text("A2")
                 trade['Entry'] = float(price['bid'])
                 trade['StopLoss'] = float(price['bid']) - 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
-                trade['TP'] = [] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
             # uses ask price if the order type is a sell
             if(trade['OrderType'] == 'Sell'):
                 update.effective_message.reply_text("A3")
                 trade['Entry'] = float(price['ask'])
                 trade['StopLoss'] = float(price['ask']) + 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
-                trade['TP'] = [] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
         # produces a table with trade information
-        # GetTradeInformation(update, trade, account_information['balance'])
+        GetTradeInformation(update, trade, account_information['balance'])
             
         # checks if the user has indicated to enter trade
         if(enterTrade == True):

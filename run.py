@@ -60,6 +60,8 @@ def ParseSignal(signal: str) -> dict:
 
     trade = {}
 
+    update.effective_message.reply_text(signal[0].lower())
+    
     # determines the order type of the trade
     if('Buy Limit'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Buy Limit'

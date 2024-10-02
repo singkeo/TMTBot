@@ -139,6 +139,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
         update.effective_message.reply_text("B2")
 
     # calculates the stop loss in pips
+    update.effective_message.reply_text(f"Entry: {trade['Entry']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
     update.effective_message.reply_text("B3")
     stopLossPips = abs(round((trade['StopLoss'] - trade['Entry']) / multiplier))
 
@@ -146,6 +147,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     update.effective_message.reply_text("B4")
     update.effective_message.reply_text(trade['PositionSize'])
     trade['PositionSize'] = 10.0 # TO UPDATE with env var # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
+    update.effective_message.reply_text(f"PositionSize: {trade['PositionSize']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
     update.effective_message.reply_text("B4.2")
     
     # calculates the take profit(s) in pips

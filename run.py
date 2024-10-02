@@ -141,7 +141,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
 
     # calculates the position size using stop loss and RISK FACTOR
     update.effective_message.reply_text("B4")
-    trade['PositionSize'] = math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
+    trade['PositionSize'] = 10.0 # TO UPDATE with env var # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
 
     # calculates the take profit(s) in pips
     takeProfitPips = []

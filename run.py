@@ -124,12 +124,15 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     # calculates the stop loss in pips
     if(trade['Symbol'] == 'XAUUSD'):
         multiplier = 0.1
+        update.effective_message.reply_text("B1.2")
 
     elif(trade['Symbol'] == 'XAGUSD'):
         multiplier = 0.001
+        update.effective_message.reply_text("B1.3")
 
     elif(str(trade['Entry']).index('.') >= 2):
         multiplier = 0.01
+        update.effective_message.reply_text("B1.4")
 
     else:
         multiplier = 0.0001
@@ -141,8 +144,10 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
 
     # calculates the position size using stop loss and RISK FACTOR
     update.effective_message.reply_text("B4")
+    update.effective_message.reply_text(trade['PositionSize'])
     trade['PositionSize'] = 10.0 # TO UPDATE with env var # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
-
+    update.effective_message.reply_text("B4.2")
+    
     # calculates the take profit(s) in pips
     takeProfitPips = []
     for takeProfit in trade['TP']:

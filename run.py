@@ -88,17 +88,20 @@ def ParseSignal(signal: str) -> dict:
     
     # checks if the symbol is valid, if not, returns an empty dictionary
     if(trade['Symbol'] not in SYMBOLS):
-        return {}
+        trade['Symbol'] = 'AUS200.cash'  # COMMENTMIKA ASX200 index
     
     # checks wheter or not to convert entry to float because of market exectution option ("NOW")
     if(trade['OrderType'] == 'Buy' or trade['OrderType'] == 'Sell'):
-        trade['Entry'] = (signal[1].split())[-1]
+        # COMMENTMIKA trade['Entry'] = (signal[1].split())[-1]
+        # If it's a Buy/Sell signal, it's going to be "NOW" anyway
+        trade['Entry'] = 'NOW'
+        trade['StopLoss'] = float((signal[2].split())[-1]) - 20.0 # COMMENTMIKA We have to update the 20.0 by an env variable
+        trade['TP'] = [float((signal[3].split())[-1])] - 20.0 # COMMENTMIKA We have to update the 20.0 by an env variable
     
     else:
         trade['Entry'] = float((signal[1].split())[-1])
-    
-    trade['StopLoss'] = float((signal[2].split())[-1])
-    trade['TP'] = [float((signal[3].split())[-1])]
+        trade['StopLoss'] = float((signal[2].split())[-1])
+        trade['TP'] = [float((signal[3].split())[-1])]
 
     # checks if there's a fourth line and parses it for TP2
     if(len(signal) > 4):

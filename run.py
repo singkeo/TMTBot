@@ -294,7 +294,7 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 trade['TP'] = [] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
         # produces a table with trade information
-        GetTradeInformation(update, trade, account_information['balance'])
+        # GetTradeInformation(update, trade, account_information['balance'])
             
         # checks if the user has indicated to enter trade
         if(enterTrade == True):

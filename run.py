@@ -159,7 +159,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
 
     # creates table with trade information
     update.effective_message.reply_text("B6")
-    table = CreateTable(trade, balance, stopLossPips, takeProfitPips)
+    table = CreateTable(trade, balance, stopLossPips, takeProfitPips, update)
     
     # sends user trade information and calcualted risk
     update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
@@ -167,7 +167,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
 
     return
 
-def CreateTable(trade: dict, balance: float, stopLossPips: int, takeProfitPips: int) -> PrettyTable:
+def CreateTable(trade: dict, balance: float, stopLossPips: int, takeProfitPips: int, update: Update) -> PrettyTable:
     """Creates PrettyTable object to display trade information to user.
 
     Arguments:

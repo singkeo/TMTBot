@@ -147,7 +147,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     table = CreateTable(trade, balance, stopLossPips, takeProfitPips)
     
     # sends user trade information and calcualted risk
-    # COMMENTMIKA update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
+    update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
     update.effective_message.reply_text("Cooking... 👀😏")
 
     return
@@ -248,10 +248,14 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
             # uses bid price if the order type is a buy
             if(trade['OrderType'] == 'Buy'):
                 trade['Entry'] = float(price['bid'])
+                trade['StopLoss'] = float(price['bid']) - 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['TP'] = float(price['bid']) + 200.0 # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
             # uses ask price if the order type is a sell
             if(trade['OrderType'] == 'Sell'):
                 trade['Entry'] = float(price['ask'])
+                trade['StopLoss'] = float(price['ask']) + 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['TP'] = float(price['ask']) - 200.0 # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
         # produces a table with trade information
         GetTradeInformation(update, trade, account_information['balance'])

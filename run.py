@@ -123,47 +123,35 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
         trade: dictionary that stores trade information
         balance: current balance of the MetaTrader account
     """
-
-    update.effective_message.reply_text("B1")
-
+    
     # calculates the stop loss in pips
     if(trade['Symbol'] == 'XAUUSD'):
         multiplier = 0.1
-        update.effective_message.reply_text("B1.2")
 
     elif(trade['Symbol'] == 'XAGUSD'):
         multiplier = 0.001
-        update.effective_message.reply_text("B1.3")
 
     elif(str(trade['Entry']).index('.') >= 2):
         multiplier = 0.01
-        update.effective_message.reply_text("B1.4")
 
     else:
         multiplier = 0.0001
-        update.effective_message.reply_text("B2")
 
     # calculates the stop loss in pips
-    update.effective_message.reply_text(f"Entry: {trade['Entry']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
-    update.effective_message.reply_text("B3")
+    # update.effective_message.reply_text(f"Entry: {trade['Entry']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
     stopLossPips = abs(round((trade['StopLoss'] - trade['Entry']) / multiplier))
 
     # calculates the position size using stop loss and RISK FACTOR
-    update.effective_message.reply_text("B4")
     trade['PositionSize'] = LOT_SIZE # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
-    update.effective_message.reply_text(f"PositionSize: {trade['PositionSize']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
-    update.effective_message.reply_text("B4.2")
+    # update.effective_message.reply_text(f"PositionSize: {trade['PositionSize']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
     
     # calculates the take profit(s) in pips
     takeProfitPips = []
-    update.effective_message.reply_text("B4.3")
-    update.effective_message.reply_text(f"TP values: {trade['TP']}")
+    # update.effective_message.reply_text(f"TP values: {trade['TP']}")
     for takeProfit in trade['TP']:
-        update.effective_message.reply_text("B5")
         takeProfitPips.append(abs(round((takeProfit - trade['Entry']) / multiplier)))
 
     # creates table with trade information
-    update.effective_message.reply_text("B6")
     table = CreateTable(trade, balance, stopLossPips, takeProfitPips, update)
     
     # sends user trade information and calcualted risk
@@ -183,58 +171,40 @@ def CreateTable(trade: dict, balance: float, stopLossPips: int, takeProfitPips: 
     Returns:
         a Pretty Table object that contains trade information
     """
-
-    update.effective_message.reply_text("C1")
-
+    
     # creates prettytable object
     table = PrettyTable()
-
-    update.effective_message.reply_text("C2")
     
     table.title = "Trade Information"
     table.field_names = ["Key", "Value"]
     table.align["Key"] = "l"  
     table.align["Value"] = "l" 
 
-    update.effective_message.reply_text("C3")
-
     table.add_row([trade["OrderType"] , trade["Symbol"]])
-    update.effective_message.reply_text("C4")
-    table.add_row(['Entry\n', trade['Entry']])
-    update.effective_message.reply_text("C5")
+    # table.add_row(['Entry\n', trade['Entry']])
 
     table.add_row(['Stop Loss', '{} pips'.format(stopLossPips)])
-    update.effective_message.reply_text("C6")
 
-    for count, takeProfit in enumerate(takeProfitPips):
-        update.effective_message.reply_text("C7")
-        table.add_row([f'TP {count + 1}', f'{takeProfit} pips'])
+    # for count, takeProfit in enumerate(takeProfitPips):
+        # table.add_row([f'TP {count + 1}', f'{takeProfit} pips'])
 
-    update.effective_message.reply_text("C8")
-    table.add_row(['\nRisk Factor', '\n{:,.0f} %'.format(trade['RiskFactor'] * 100)])
-    update.effective_message.reply_text("C9")
+    # table.add_row(['\nRisk Factor', '\n{:,.0f} %'.format(trade['RiskFactor'] * 100)])
     table.add_row(['Position Size', trade['PositionSize']])
     
     table.add_row(['\nCurrent Balance', '\n$ {:,.2f}'.format(balance)])
-    update.effective_message.reply_text("C10")
-    table.add_row(['Potential Loss', '$ {:,.2f}'.format(round((trade['PositionSize'] * 10) * stopLossPips, 2))])
-    update.effective_message.reply_text("C11")
+    # table.add_row(['Potential Loss', '$ {:,.2f}'.format(round((trade['PositionSize'] * 10) * stopLossPips, 2))])
 
     # total potential profit from trade
     totalProfit = 0
 
-    for count, takeProfit in enumerate(takeProfitPips):
-        update.effective_message.reply_text("C12")
-        profit = round((trade['PositionSize'] * 10 * (1 / len(takeProfitPips))) * takeProfit, 2)
-        update.effective_message.reply_text("C13")
-        table.add_row([f'TP {count + 1} Profit', '$ {:,.2f}'.format(profit)])
-        update.effective_message.reply_text("C4")
+    # for count, takeProfit in enumerate(takeProfitPips):
+        # profit = round((trade['PositionSize'] * 10 * (1 / len(takeProfitPips))) * takeProfit, 2)
+        # table.add_row([f'TP {count + 1} Profit', '$ {:,.2f}'.format(profit)])
         
         # sums potential profit from each take profit target
-        totalProfit += profit
-        update.effective_message.reply_text("C15")
+        # totalProfit += profit
 
-    table.add_row(['\nTotal Profit', '\n$ {:,.2f}'.format(totalProfit)])
+    # table.add_row(['\nTotal Profit', '\n$ {:,.2f}'.format(totalProfit)])
 
     return table
 
@@ -281,19 +251,16 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
 
         # checks if the order is a market execution to get the current price of symbol
         if(trade['Entry'] == 'NOW'):
-            update.effective_message.reply_text("A1")
             price = await connection.get_symbol_price(symbol=trade['Symbol'])
 
             # uses bid price if the order type is a buy
             if(trade['OrderType'] == 'Buy'):
-                update.effective_message.reply_text("A2")
                 trade['Entry'] = float(price['bid'])
                 trade['StopLoss'] = float(price['bid']) - STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
             # uses ask price if the order type is a sell
             if(trade['OrderType'] == 'Sell'):
-                update.effective_message.reply_text("A3")
                 trade['Entry'] = float(price['ask'])
                 trade['StopLoss'] = float(price['ask']) + STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR

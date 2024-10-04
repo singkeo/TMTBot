@@ -477,31 +477,39 @@ async def ExitTrades(update: Update, context: CallbackContext, exit_type: str) -
         
         # Exit positions based on type
         for position in positions:
-            # Check if position matches the exit type
-            if (exit_type.lower() == 'exit buy' and position['type'] == 'POSITION_TYPE_BUY') or \
-               (exit_type.lower() == 'exit sell' and position['type'] == 'POSITION_TYPE_SELL'):
-                try:
-                    # Close the position
-                    if position['type'] == 'POSITION_TYPE_BUY':
-                        await connection.create_market_sell_order(
-                            position['symbol'],
-                            position['volume'],
-                            None,
-                            None,
-                            {'closeBy': position['id']}
-                        )
-                    else:
-                        await connection.create_market_buy_order(
-                            position['symbol'],
-                            position['volume'],
-                            None,
-                            None,
-                            {'closeBy': position['id']}
-                        )
-                    closed_count += 1
-                except Exception as error:
-                    logger.error(f"Error closing position {position['id']}: {error}")
-                    update.effective_message.reply_text(f"Error closing position {position['id']}: {error}")
+            try:
+                # Check if position matches the exit type
+                should_close = (exit_type.lower() == 'exit buy' and position['type'] == 'POSITION_TYPE_BUY') or \
+                              (exit_type.lower() == 'exit sell' and position['type'] == 'POSITION_TYPE_SELL')
+                
+                if should_close:
+                    # Close the position using market order
+                    try:
+                        result = await connection.close_position(position['id'])
+                        if result.get('orderId'):
+                            closed_count += 1
+                            logger.info(f"Successfully closed position {position['id']}")
+                        else:
+                            logger.error(f"Failed to close position {position['id']}")
+                            
+                    except Exception as error:
+                        error_details = getattr(error, 'details', None)
+                        error_message = f"Error closing position {position['id']}"
+                        
+                        if error_details:
+                            logger.error(f"{error_message}: {str(error)}, Details: {error_details}")
+                            update.effective_message.reply_text(
+                                f"{error_message}:\n{str(error)}\nDetails: {error_details}"
+                            )
+                        else:
+                            logger.error(f"{error_message}: {str(error)}")
+                            update.effective_message.reply_text(
+                                f"{error_message}:\n{str(error)}"
+                            )
+                        
+            except Exception as position_error:
+                logger.error(f"Error processing position: {str(position_error)}")
+                continue
         
         # Send summary message
         if closed_count > 0:
@@ -510,8 +518,20 @@ async def ExitTrades(update: Update, context: CallbackContext, exit_type: str) -
             update.effective_message.reply_text(f"No {exit_type.split()[1].upper()} positions found to close 🤷‍♂️")
             
     except Exception as error:
-        logger.error(f'Error: {error}')
-        update.effective_message.reply_text(f"There was an issue with the connection 😕\n\nError Message:\n{error}")
+        error_details = getattr(error, 'details', None)
+        if error_details:
+            logger.error(f'Error: {error}, Details: {error_details}')
+            update.effective_message.reply_text(
+                f"There was an issue with the connection 😕\n\n"
+                f"Error Message: {error}\n"
+                f"Details: {error_details}"
+            )
+        else:
+            logger.error(f'Error: {error}')
+            update.effective_message.reply_text(
+                f"There was an issue with the connection 😕\n\n"
+                f"Error Message: {error}"
+            )
 
 def unknown_command(update: Update, context: CallbackContext) -> None:
     """Checks if the user is authorized to use this bot or shares to use /help command for instructions.

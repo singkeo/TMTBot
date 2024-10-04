@@ -31,6 +31,8 @@ PORT = int(os.environ.get('PORT', '8443'))
 # ENV Variables
 LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))  # Default to 0.01 if not set
 STOP_LOSS = float(os.environ.get('STOP_LOSS', '20.0'))
+TAKE_PROFIT = float(os.environ.get('TAKE_PROFIT', '200.0'))
+INDEX = os.environ.get('INDEX', 'AUS200.cash')
 
 # Enables logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -91,7 +93,7 @@ def ParseSignal(signal: str) -> dict:
     
     # checks if the symbol is valid, if not, returns an empty dictionary
     if(trade['Symbol'] not in SYMBOLS):
-        trade['Symbol'] = 'AUS200.cash'  # COMMENTMIKA ASX200 index
+        trade['Symbol'] = INDEX  # COMMENTMIKA ASX200 index
     
     # checks wheter or not to convert entry to float because of market exectution option ("NOW")
     if(trade['OrderType'] == 'Buy' or trade['OrderType'] == 'Sell'):

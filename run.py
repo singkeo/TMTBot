@@ -28,6 +28,9 @@ APP_URL = os.environ.get("APP_URL")
 # Port number for Telegram bot web hook
 PORT = int(os.environ.get('PORT', '8443'))
 
+# ENV Variables
+LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))  # Default to 0.01 if not set
+STOP_LOSS = float(os.environ.get('STOP_LOSS', '20.0'))
 
 # Enables logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -145,7 +148,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
 
     # calculates the position size using stop loss and RISK FACTOR
     update.effective_message.reply_text("B4")
-    trade['PositionSize'] = 10.0 # TO UPDATE with env var # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
+    trade['PositionSize'] = LOT_SIZE # COMMENTMIKA math.floor(((balance * trade['RiskFactor']) / stopLossPips) / 10 * 100) / 100
     update.effective_message.reply_text(f"PositionSize: {trade['PositionSize']}, StopLoss: {trade['StopLoss']}, TP: {trade['TP']}")
     update.effective_message.reply_text("B4.2")
     
@@ -283,14 +286,14 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
             if(trade['OrderType'] == 'Buy'):
                 update.effective_message.reply_text("A2")
                 trade['Entry'] = float(price['bid'])
-                trade['StopLoss'] = float(price['bid']) - 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['StopLoss'] = float(price['bid']) - STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
             # uses ask price if the order type is a sell
             if(trade['OrderType'] == 'Sell'):
                 update.effective_message.reply_text("A3")
                 trade['Entry'] = float(price['ask'])
-                trade['StopLoss'] = float(price['ask']) + 20.0 # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['StopLoss'] = float(price['ask']) + STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
 
         # produces a table with trade information

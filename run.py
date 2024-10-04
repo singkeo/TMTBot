@@ -437,6 +437,82 @@ def CalculateTrade(update: Update, context: CallbackContext) -> int:
 
     return DECISION
 
+async def ExitTrades(update: Update, context: CallbackContext, exit_type: str) -> None:
+    """Exits all trades of specified type (buy/sell) from MetaTrader account.
+    
+    Arguments:
+        update: update from Telegram
+        context: CallbackContext object that stores commonly used objects in handler callbacks
+        exit_type: string specifying which type of trades to exit ('buy' or 'sell')
+    """
+    
+    # creates connection to MetaAPI
+    api = MetaApi(API_KEY)
+    
+    try:
+        account = await api.metatrader_account_api.get_account(ACCOUNT_ID)
+        initial_state = account.state
+        deployed_states = ['DEPLOYING', 'DEPLOYED']
+
+        if initial_state not in deployed_states:
+            logger.info('Deploying account')
+            await account.deploy()
+
+        logger.info('Waiting for API server to connect to broker ...')
+        await account.wait_connected()
+
+        # connect to MetaApi API
+        connection = account.get_rpc_connection()
+        await connection.connect()
+
+        # wait until terminal state synchronized to the local state
+        logger.info('Waiting for SDK to synchronize to terminal state ...')
+        await connection.wait_synchronized()
+
+        # Get all positions
+        positions = await connection.get_positions()
+        
+        # Counter for closed positions
+        closed_count = 0
+        
+        # Exit positions based on type
+        for position in positions:
+            # Check if position matches the exit type
+            if (exit_type.lower() == 'exit buy' and position['type'] == 'POSITION_TYPE_BUY') or \
+               (exit_type.lower() == 'exit sell' and position['type'] == 'POSITION_TYPE_SELL'):
+                try:
+                    # Close the position
+                    if position['type'] == 'POSITION_TYPE_BUY':
+                        await connection.create_market_sell_order(
+                            position['symbol'],
+                            position['volume'],
+                            None,
+                            None,
+                            {'closeBy': position['id']}
+                        )
+                    else:
+                        await connection.create_market_buy_order(
+                            position['symbol'],
+                            position['volume'],
+                            None,
+                            None,
+                            {'closeBy': position['id']}
+                        )
+                    closed_count += 1
+                except Exception as error:
+                    logger.error(f"Error closing position {position['id']}: {error}")
+                    update.effective_message.reply_text(f"Error closing position {position['id']}: {error}")
+        
+        # Send summary message
+        if closed_count > 0:
+            update.effective_message.reply_text(f"Successfully closed {closed_count} {exit_type.split()[1].upper()} positions 👍")
+        else:
+            update.effective_message.reply_text(f"No {exit_type.split()[1].upper()} positions found to close 🤷‍♂️")
+            
+    except Exception as error:
+        logger.error(f'Error: {error}')
+        update.effective_message.reply_text(f"There was an issue with the connection 😕\n\nError Message:\n{error}")
+
 def unknown_command(update: Update, context: CallbackContext) -> None:
     """Checks if the user is authorized to use this bot or shares to use /help command for instructions.
 
@@ -451,7 +527,6 @@ def unknown_command(update: Update, context: CallbackContext) -> None:
     update.effective_message.reply_text("Unknown command. Use /trade to place a trade or /calculate to find information for a trade. You can also use the /help command to view instructions for this bot.")
 
     return
-
 
 # Command Handlers
 def welcome(update: Update, context: CallbackContext) -> None:
@@ -490,6 +565,25 @@ def help(update: Update, context: CallbackContext) -> None:
     update.effective_message.reply_text(trade_example + market_execution_example + limit_example + note)
 
     return
+
+def exit_trade_handler(update: Update, context: CallbackContext) -> None:
+    """Handles exit trade commands.
+    
+    Arguments:
+        update: update from Telegram
+        context: CallbackContext object that stores commonly used objects in handler callbacks
+    """
+    if not(update.effective_message.chat.username == TELEGRAM_USER):
+        update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+        return
+
+    message = update.effective_message.text.lower()
+    if message not in ['exit buy', 'exit sell']:
+        update.effective_message.reply_text("Invalid exit command. Please use 'exit buy' or 'exit sell'.")
+        return
+        
+    update.effective_message.reply_text(f"Processing {message} command... 🔄")
+    asyncio.run(ExitTrades(update, context, message))
 
 def cancel(update: Update, context: CallbackContext) -> int:
     """Cancels and ends the conversation.   
@@ -584,6 +678,12 @@ def main() -> None:
     # conversation handler for entering trade or calculating trade information
     dp.add_handler(conv_handler)
 
+    # Exit trade handler
+    dp.add_handler(MessageHandler(
+        Filters.regex('^exit (buy|sell)$'), 
+        exit_trade_handler
+    ))
+    
     # message handler for all messages that are not included in conversation handler
     dp.add_handler(MessageHandler(Filters.text, unknown_command))
 

@@ -325,43 +325,42 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
 
 # Handler Functions
 def PlaceTrade(update: Update, context: CallbackContext) -> int:
-    """Parses trade and places on MetaTrader account.   
+    """Parses trade and places on MetaTrader account."""
     
-    Arguments:
-        update: update from Telegram
-        context: CallbackContext object that stores commonly used objects in handler callbacks
-    """
-
-    # checks if the trade has already been parsed or not
-    if(context.user_data['trade'] == None):
-
+    # Add debug logging
+    logger.info(f"Processing trade from chat ID: {update.effective_message.chat.id}")
+    logger.info(f"Message content: {update.effective_message.text}")
+    
+    # Check if the trade has already been parsed
+    if context.user_data.get('trade') is None:
         try: 
-            # parses signal from Telegram message
+            # Parse signal from Telegram message
             trade = ParseSignal(update.effective_message.text)
             
-            # checks if there was an issue with parsing the trade
-            if(not(trade)):
+            if not trade:
                 raise Exception('Invalid Trade')
 
-            # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
-            # COMMENTMIKA update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... \n(May take a while) ⏰")
             update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
         
         except Exception as error:
-            logger.error(f'Error: {error}')
-            errorMessage = f"There was an error parsing this trade 😕\n\nError: {error}\n\nPlease re-enter trade with this format:\n\nBUY/SELL SYMBOL\nEntry \nSL \nTP \n\nOr use the /cancel to command to cancel this action."
+            logger.error(f'Error parsing trade: {error}')
+            errorMessage = (
+                f"There was an error parsing this trade 😕\n\n"
+                f"Error: {error}\n\n"
+                f"Please re-enter trade with this format:\n"
+                f"BUY/SELL SYMBOL\nEntry \nSL \nTP \n\n"
+                f"Or use the /cancel to command to cancel this action."
+            )
             update.effective_message.reply_text(errorMessage)
-
-            # returns to TRADE state to reattempt trade parsing
             return TRADE
     
-    # attempts connection to MetaTrader and places trade
+    # Attempt to connect to MetaTrader and place trade
     asyncio.run(ConnectMetaTrader(update, context.user_data['trade'], True))
     
-    # removes trade from user context data
+    # Clean up
     context.user_data['trade'] = None
-
+    
     return ConversationHandler.END
 
 def CalculateTrade(update: Update, context: CallbackContext) -> int:
@@ -607,24 +606,32 @@ def error(update: Update, context: CallbackContext) -> None:
     return
 
 def Trade_Command(update: Update, context: CallbackContext) -> int:
-    """Asks user to enter the trade they would like to place.
-
-    Arguments:
-        update: update from Telegram
-        context: CallbackContext object that stores commonly used objects in handler callbacks
-    """
-    update.effective_message.reply_text(update.effective_message.chat.username)
-    update.effective_message.reply_text("-2-")
-    update.effective_message.reply_text(TELEGRAM_USER)
+    """Asks user to enter the trade they would like to place."""
     
-    if(not(update.effective_message.chat.username == TELEGRAM_USER)):
-        update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
-        return ConversationHandler.END
+    # Add debug logging
+    logger.info(f"Trade command received from chat ID: {update.effective_message.chat.id}")
+    logger.info(f"Message from user: {update.effective_message.from_user.username}")
+    logger.info(f"Chat type: {update.effective_message.chat.type}")
     
-    # initializes the user's trade as empty prior to input and parsing
+    # Check if it's a group chat
+    is_group = update.effective_message.chat.type in ['group', 'supergroup']
+    
+    # Modify the authorization check to handle group chats
+    if is_group:
+        # Check if the message is from an authorized user
+        if update.effective_message.from_user.username != TELEGRAM_USER:
+            update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+            return ConversationHandler.END
+    else:
+        # Original check for private chats
+        if not(update.effective_message.chat.username == TELEGRAM_USER):
+            update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+            return ConversationHandler.END
+    
+    # Initialize the trade
     context.user_data['trade'] = None
     
-    # asks user to enter the trade
+    # Ask user to enter the trade
     update.effective_message.reply_text("Please enter the trade that you would like to place.")
 
     return TRADE
@@ -669,13 +676,27 @@ def main() -> None:
     dp.add_handler(CommandHandler("help", help))
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("trade", Trade_Command), CommandHandler("calculate", Calculation_Command)],
+        entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],
         states={
-            TRADE: [MessageHandler(Filters.text & ~Filters.command, PlaceTrade)],
-            CALCULATE: [MessageHandler(Filters.text & ~Filters.command, CalculateTrade)],
-            DECISION: [CommandHandler("yes", PlaceTrade), CommandHandler("no", cancel)]
+            TRADE: [
+                MessageHandler(
+                    Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), 
+                    PlaceTrade
+                )
+            ],
+            CALCULATE: [
+                MessageHandler(
+                    Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), 
+                    CalculateTrade
+                )
+            ],
+            DECISION: [
+                CommandHandler("yes", PlaceTrade), 
+                CommandHandler("no", cancel)
+            ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
+        allow_reentry=True
     )
 
     # conversation handler for entering trade or calculating trade information
@@ -699,6 +720,16 @@ def main() -> None:
 
     return
 
+def detailed_error_handler(update: Update, context: CallbackContext):
+        """Log Errors caused by Updates with detailed information."""
+        logger.warning('Update "%s" caused error "%s"', update.to_dict(), context.error)
+        logger.warning('Error details:', exc_info=context.error)
+        
+        # Optionally notify the user about the error
+        if update.effective_message:
+            update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
+
+    dp.add_error_handler(detailed_error_handler)
 
 if __name__ == '__main__':
     main()

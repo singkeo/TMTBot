@@ -562,16 +562,27 @@ def exit_trade_handler(update: Update, context: CallbackContext) -> None:
         update: update from Telegram
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
-    update.effective_message.reply_text(update.effective_message.chat.username)
-    update.effective_message.reply_text("-3-")
-    update.effective_message.reply_text(TELEGRAM_USER)
-
-    if not(update.effective_message.chat.username == TELEGRAM_USER):
-        update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
-        return
+    # Add debug logging
+    logger.info(f"Exit command received from chat ID: {update.effective_message.chat.id}")
+    logger.info(f"Message from user: {update.effective_message.from_user.username}")
+    logger.info(f"Chat type: {update.effective_message.chat.type}")
+    
+    # Check if it's a group chat
+    is_group = update.effective_message.chat.type in ['group', 'supergroup']
+    
+    # Authorization check for group chats
+    if is_group:
+        if update.effective_message.from_user.username != TELEGRAM_USER:
+            update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+            return
+    else:
+        # Original check for private chats
+        if not(update.effective_message.chat.username == TELEGRAM_USER):
+            update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+            return
 
     message = update.effective_message.text.lower()
-    if message not in ['exit buy', 'exit sell']:
+    if message not in ['exit buy', 'exit sell', 'Exit buy', 'Exit sell']:
         update.effective_message.reply_text("Invalid exit command. Please use 'exit buy' or 'exit sell'.")
         return
         
@@ -713,9 +724,9 @@ def main() -> None:
 
     dp.add_error_handler(detailed_error_handler)
 
-    # Exit trade handler
+    # Add the exit trade handler with updated filters
     dp.add_handler(MessageHandler(
-        Filters.regex('^exit (buy|sell)$'), 
+        Filters.regex('^exit (buy|sell)$') & (Filters.chat_type.groups | Filters.chat_type.private), 
         exit_trade_handler
     ))
     

@@ -507,6 +507,9 @@ def unknown_command(update: Update, context: CallbackContext) -> None:
         update: update from Telegram
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
+    update.effective_message.reply_text(update.effective_message.chat.username)
+    update.effective_message.reply_text("-4-")
+    update.effective_message.reply_text(TELEGRAM_USER)
     if(not(update.effective_message.chat.username == TELEGRAM_USER)):
         update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
         return
@@ -560,6 +563,10 @@ def exit_trade_handler(update: Update, context: CallbackContext) -> None:
         update: update from Telegram
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
+    update.effective_message.reply_text(update.effective_message.chat.username)
+    update.effective_message.reply_text("-3-")
+    update.effective_message.reply_text(TELEGRAM_USER)
+
     if not(update.effective_message.chat.username == TELEGRAM_USER):
         update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
         return
@@ -606,6 +613,10 @@ def Trade_Command(update: Update, context: CallbackContext) -> int:
         update: update from Telegram
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
+    update.effective_message.reply_text(update.effective_message.chat.username)
+    update.effective_message.reply_text("-2-")
+    update.effective_message.reply_text(TELEGRAM_USER)
+    
     if(not(update.effective_message.chat.username == TELEGRAM_USER)):
         update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
         return ConversationHandler.END
@@ -625,6 +636,11 @@ def Calculation_Command(update: Update, context: CallbackContext) -> int:
         update: update from Telegram
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
+
+    update.effective_message.reply_text(update.effective_message.chat.username)
+    update.effective_message.reply_text("-1-")
+    update.effective_message.reply_text(TELEGRAM_USER)
+    
     if(not(update.effective_message.chat.username == TELEGRAM_USER)):
         update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
         return ConversationHandler.END

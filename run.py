@@ -702,6 +702,17 @@ def main() -> None:
     # conversation handler for entering trade or calculating trade information
     dp.add_handler(conv_handler)
 
+    def detailed_error_handler(update: Update, context: CallbackContext):
+        """Log Errors caused by Updates with detailed information."""
+        logger.warning('Update "%s" caused error "%s"', update.to_dict(), context.error)
+        logger.warning('Error details:', exc_info=context.error)
+        
+        # Optionally notify the user about the error
+        if update.effective_message:
+            update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
+
+    dp.add_error_handler(detailed_error_handler)
+
     # Exit trade handler
     dp.add_handler(MessageHandler(
         Filters.regex('^exit (buy|sell)$'), 
@@ -719,17 +730,6 @@ def main() -> None:
     updater.idle()
 
     return
-
-def detailed_error_handler(update: Update, context: CallbackContext):
-        """Log Errors caused by Updates with detailed information."""
-        logger.warning('Update "%s" caused error "%s"', update.to_dict(), context.error)
-        logger.warning('Error details:', exc_info=context.error)
-        
-        # Optionally notify the user about the error
-        if update.effective_message:
-            update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
-
-    dp.add_error_handler(detailed_error_handler)
 
 if __name__ == '__main__':
     main()

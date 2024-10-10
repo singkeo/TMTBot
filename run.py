@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 CALCULATE, TRADE, DECISION = range(3)
 
 # allowed FX symbols
-SYMBOLS = ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NOW', 'NZDCAD', 'NZDCHF', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'XAGUSD', 'XAUUSD']
+SYMBOLS = ['FRA40.cash']
 
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
@@ -94,6 +94,8 @@ def ParseSignal(signal: str) -> dict:
     # checks if the symbol is valid, if not, returns an empty dictionary
     if(trade['Symbol'] not in SYMBOLS):
         trade['Symbol'] = INDEX  # COMMENTMIKA ASX200 index
+        logger.error(f"Invalid symbol received: {trade['Symbol']}")
+        raise ValueError(f"Invalid trading symbol: {trade['Symbol']}")
     
     # checks wheter or not to convert entry to float because of market exectution option ("NOW")
     if(trade['OrderType'] == 'Buy' or trade['OrderType'] == 'Sell'):
@@ -328,6 +330,7 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
     """Parses trade and places on MetaTrader account."""
     
     # Add debug logging
+    logger.info(f"New trade request: Symbol={trade['Symbol']}, Size={trade['PositionSize']}")
     logger.info(f"Processing trade from chat ID: {update.effective_message.chat.id}")
     logger.info(f"Message content: {update.effective_message.text}")
     

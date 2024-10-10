@@ -60,7 +60,6 @@ class MetaApiConnection:
     _health_check_interval = 60  # seconds
     
     @classmethod
-    @classmethod
     async def get_connection(cls):
         current_time = time.time()
         

@@ -60,6 +60,7 @@ class MetaApiConnection:
     _health_check_interval = 60  # seconds
     
     @classmethod
+    @classmethod
     async def get_connection(cls):
         current_time = time.time()
         
@@ -71,7 +72,8 @@ class MetaApiConnection:
         
         if cls._connection is None:
             try:
-                async with asyncio.timeout(CONNECTION_TIMEOUT):
+                # Remplacer asyncio.timeout par asyncio.wait_for
+                async def connect():
                     api = MetaApi(API_KEY)
                     account = await api.metatrader_account_api.get_account(ACCOUNT_ID)
                     
@@ -84,6 +86,11 @@ class MetaApiConnection:
                     await cls._connection.wait_synchronized()
                     cls._last_health_check = current_time
                     logger.info("Created new MetaAPI connection")
+                    return cls._connection
+    
+                # Utiliser wait_for au lieu de timeout
+                cls._connection = await asyncio.wait_for(connect(), timeout=CONNECTION_TIMEOUT)
+                
             except asyncio.TimeoutError:
                 logger.error("Connection timeout exceeded")
                 raise

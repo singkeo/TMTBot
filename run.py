@@ -259,6 +259,8 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 trade['Entry'] = float(price['bid'])
                 trade['StopLoss'] = float(price['bid']) - STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                logger.info(f"DEBUG: Entry={price['bid']}")
+                logger.info(f"DEBUG: STOP_LOSS={STOP_LOSS}")
                 logger.info(f"DEBUG: SL={trade['StopLoss']}")
 
             # uses ask price if the order type is a sell
@@ -266,6 +268,8 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 trade['Entry'] = float(price['ask'])
                 trade['StopLoss'] = float(price['ask']) + STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                logger.info(f"DEBUG: Entry={price['bid']}")
+                logger.info(f"DEBUG: STOP_LOSS={STOP_LOSS}")
                 logger.info(f"DEBUG: SL={trade['StopLoss']}")
 
         # produces a table with trade information

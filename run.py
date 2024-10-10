@@ -34,7 +34,7 @@ PORT = int(os.environ.get('PORT', '8443'))
 LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))
 STOP_LOSS = float(os.environ.get('STOP_LOSS', '20.0'))
 TAKE_PROFIT = float(os.environ.get('TAKE_PROFIT', '200.0'))
-INDEX = os.environ.get('INDEX', 'AUS200.cash')
+INDEX = os.environ.get('INDEX', 'FRA40.cash')
 
 # Connection timeouts
 CONNECTION_TIMEOUT = 30  # seconds
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 CALCULATE, TRADE, DECISION = range(3)
 
 # allowed FX symbols
-SYMBOLS = ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NOW', 'NZDCAD', 'NZDCHF', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'XAGUSD', 'XAUUSD']
+SYMBOLS = ['FRA40.cash']
 
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))

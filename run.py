@@ -287,22 +287,22 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 # executes buy market execution order
                 if(trade['OrderType'] == 'Buy'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_market_buy_order(trade['Symbol'], trade['PositionSize']), trade['StopLoss'], takeProfit)
+                        result = await connection.create_market_buy_order(trade['Symbol'], trade['PositionSize'], trade['StopLoss'], takeProfit)
 
                 # executes buy limit order
                 elif(trade['OrderType'] == 'Buy Limit'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_limit_buy_order(trade['Symbol'], trade['PositionSize']), trade['Entry'], trade['StopLoss'], takeProfit)
+                        result = await connection.create_limit_buy_order(trade['Symbol'], trade['PositionSize'], trade['Entry'], trade['StopLoss'], takeProfit)
 
                 # executes buy stop order
                 elif(trade['OrderType'] == 'Buy Stop'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_stop_buy_order(trade['Symbol'], trade['PositionSize']), trade['Entry'], trade['StopLoss'], takeProfit)
+                        result = await connection.create_stop_buy_order(trade['Symbol'], trade['PositionSize'], trade['Entry'], trade['StopLoss'], takeProfit)
 
                 # executes sell market execution order
                 elif(trade['OrderType'] == 'Sell'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_market_sell_order(trade['Symbol'], trade['PositionSize']), trade['StopLoss'], takeProfit)
+                        result = await connection.create_market_sell_order(trade['Symbol'], trade['PositionSize'], trade['StopLoss'], takeProfit)
 
                 # executes sell limit order
                 elif(trade['OrderType'] == 'Sell Limit'):

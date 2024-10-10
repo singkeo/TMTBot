@@ -94,8 +94,7 @@ def ParseSignal(signal: str) -> dict:
     # checks if the symbol is valid, if not, returns an empty dictionary
     if(trade['Symbol'] not in SYMBOLS):
         trade['Symbol'] = INDEX  # COMMENTMIKA ASX200 index
-        logger.error(f"Invalid symbol received: {trade['Symbol']}")
-        raise ValueError(f"Invalid trading symbol: {trade['Symbol']}")
+        logger.info(f"Symbol received: {trade['Symbol']}")
     
     # checks wheter or not to convert entry to float because of market exectution option ("NOW")
     if(trade['OrderType'] == 'Buy' or trade['OrderType'] == 'Sell'):

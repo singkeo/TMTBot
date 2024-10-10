@@ -3,8 +3,6 @@ import asyncio
 import logging
 import math
 import os
-import time
-from typing import Optional
 
 try:
     from typing import Literal
@@ -31,14 +29,10 @@ APP_URL = os.environ.get("APP_URL")
 PORT = int(os.environ.get('PORT', '8443'))
 
 # ENV Variables
-LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))
+LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))  # Default to 0.01 if not set
 STOP_LOSS = float(os.environ.get('STOP_LOSS', '20.0'))
 TAKE_PROFIT = float(os.environ.get('TAKE_PROFIT', '200.0'))
-INDEX = os.environ.get('INDEX', 'FRA40.cash')
-
-# Connection timeouts
-CONNECTION_TIMEOUT = 30  # seconds
-SYNC_TIMEOUT = 20  # seconds
+INDEX = os.environ.get('INDEX', 'AUS200.cash')
 
 # Enables logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -53,201 +47,74 @@ SYMBOLS = ['FRA40.cash']
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
 
-class MetaApiConnection:
-    _instance = None
-    _connection = None
-    _last_health_check = 0
-    _health_check_interval = 60  # seconds
-    
-    @classmethod
-    async def get_connection(cls):
-        current_time = time.time()
-        
-        # Check if we need to verify connection health
-        if cls._connection is not None and (current_time - cls._last_health_check) > cls._health_check_interval:
-            if not await cls.is_connection_healthy():
-                cls._connection = None
-                logger.info("Connection health check failed, creating new connection")
-        
-        if cls._connection is None:
-            try:
-                # Remplacer asyncio.timeout par asyncio.wait_for
-                async def connect():
-                    api = MetaApi(API_KEY)
-                    account = await api.metatrader_account_api.get_account(ACCOUNT_ID)
-                    
-                    if account.state not in ['DEPLOYING', 'DEPLOYED']:
-                        await account.deploy()
-                    
-                    await account.wait_connected()
-                    cls._connection = account.get_rpc_connection()
-                    await cls._connection.connect()
-                    await cls._connection.wait_synchronized()
-                    cls._last_health_check = current_time
-                    logger.info("Created new MetaAPI connection")
-                    return cls._connection
-    
-                # Utiliser wait_for au lieu de timeout
-                cls._connection = await asyncio.wait_for(connect(), timeout=CONNECTION_TIMEOUT)
-                
-            except asyncio.TimeoutError:
-                logger.error("Connection timeout exceeded")
-                raise
-            except Exception as error:
-                logger.error(f"Error establishing connection: {error}")
-                raise
-        
-        return cls._connection
 
-    @classmethod
-    async def is_connection_healthy(cls):
-        try:
-            if cls._connection is None:
-                return False
-            await cls._connection.get_account_information()
-            cls._last_health_check = time.time()
-            return True
-        except Exception as error:
-            logger.error(f"Health check failed: {error}")
-            return False
-
-async def execute_trades(connection, trade: dict):
-    """Execute multiple trades in parallel for different take profits"""
-    tasks = []
-    for tp in trade['TP']:
-        if trade['OrderType'] == 'Buy':
-            task = connection.create_market_buy_order(
-                trade['Symbol'],
-                trade['PositionSize'] / len(trade['TP']),
-                trade['StopLoss'],
-                tp
-            )
-        elif trade['OrderType'] == 'Sell':
-            task = connection.create_market_sell_order(
-                trade['Symbol'],
-                trade['PositionSize'] / len(trade['TP']),
-                trade['StopLoss'],
-                tp
-            )
-        tasks.append(task)
-    return await asyncio.gather(*tasks)
-
-def validate_trade_parameters(trade: dict) -> bool:
-    """Validate trade parameters before execution"""
-    try:
-        validations = [
-            ('Symbol', lambda x: x in SYMBOLS or x == INDEX),
-            ('OrderType', lambda x: x in ['Buy', 'Sell', 'Buy Limit', 'Sell Limit', 'Buy Stop', 'Sell Stop']),
-            ('PositionSize', lambda x: 0.01 <= x <= 50.0),
-            ('StopLoss', lambda x: x > 0),
-            ('TP', lambda x: all(tp > 0 for tp in x))
-        ]
-        return all(validator(trade[param]) for param, validator in validations)
-    except Exception as error:
-        logger.error(f"Trade validation error: {error}")
-        return False
-
+# Helper Functions
 def ParseSignal(signal: str) -> dict:
-    """Starts process of parsing signal and entering trade on MetaTrader account."""
+    """Starts process of parsing signal and entering trade on MetaTrader account.
+
+    Arguments:
+        signal: trading signal
+
+    Returns:
+        a dictionary that contains trade signal information
+    """
+
+    # converts message to list of strings for parsing
     signal = signal.splitlines()
     signal = [line.rstrip() for line in signal]
 
     trade = {}
     
+    # determines the order type of the trade
     if('Buy Limit'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Buy Limit'
+
     elif('Sell Limit'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Sell Limit'
+
     elif('Buy Stop'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Buy Stop'
+
     elif('Sell Stop'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Sell Stop'
+
     elif('Buy'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Buy'
+    
     elif('Sell'.lower() in signal[0].lower()):
         trade['OrderType'] = 'Sell'
+    
+    # returns an empty dictionary if an invalid order type was given
     else:
         return {}
 
+    # extracts symbol from trade signal
     trade['Symbol'] = (signal[0].split())[-1].upper()
     
+    # checks if the symbol is valid, if not, returns an empty dictionary
     if(trade['Symbol'] not in SYMBOLS):
-        trade['Symbol'] = INDEX
+        trade['Symbol'] = INDEX  # COMMENTMIKA ASX200 index
+        logger.info(f"Symbol received: {trade['Symbol']}")
     
+    # checks wheter or not to convert entry to float because of market exectution option ("NOW")
     if(trade['OrderType'] == 'Buy' or trade['OrderType'] == 'Sell'):
+        # COMMENTMIKA trade['Entry'] = (signal[1].split())[-1]
+        # If it's a Buy/Sell signal, it's going to be "NOW" anyway
         trade['Entry'] = 'NOW'
+    
     else:
         trade['Entry'] = float((signal[1].split())[-1])
         trade['StopLoss'] = float((signal[2].split())[-1])
         trade['TP'] = [float((signal[3].split())[-1])]
 
+    # checks if there's a fourth line and parses it for TP2
     if(len(signal) > 4):
         trade['TP'].append(float(signal[4].split()[-1]))
     
+    # adds risk factor to trade
     trade['RiskFactor'] = RISK_FACTOR
-    
+
     return trade
-
-async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
-    """Attempts connection to MetaAPI and MetaTrader to place trade."""
-    start_time = time.time()
-    
-    try:
-        # Get connection from pool
-        connection = await MetaApiConnection.get_connection()
-        
-        # Validate trade parameters
-        if not validate_trade_parameters(trade):
-            raise ValueError("Invalid trade parameters")
-        
-        account_information = await connection.get_account_information()
-        update.effective_message.reply_text("Successfully connected to MetaTrader! 👌🏼")
-        
-        if(trade['Entry'] == 'NOW'):
-            price = await connection.get_symbol_price(symbol=trade['Symbol'])
-            
-            if(trade['OrderType'] == 'Buy'):
-                trade['Entry'] = float(price['bid'])
-                trade['StopLoss'] = float(price['bid']) - STOP_LOSS
-                trade['TP'] = [float(price['bid']) + TAKE_PROFIT]
-            
-            if(trade['OrderType'] == 'Sell'):
-                trade['Entry'] = float(price['ask'])
-                trade['StopLoss'] = float(price['ask']) + STOP_LOSS
-                trade['TP'] = [float(price['bid']) - TAKE_PROFIT]
-
-        GetTradeInformation(update, trade, account_information['balance'])
-            
-        if(enterTrade):
-            update.effective_message.reply_text("Entering trade on MetaTrader Account ... 👨🏾‍💻")
-
-            try:
-                if(trade['OrderType'] in ['Buy', 'Sell']):
-                    results = await execute_trades(connection, trade)
-                else:
-                    # Handle limit and stop orders
-                    result = await connection.create_limit_buy_order(trade['Symbol'], 
-                                                                   trade['PositionSize'],
-                                                                   trade['Entry'],
-                                                                   trade['StopLoss'],
-                                                                   trade['TP'][0])
-                
-                update.effective_message.reply_text("Trade entered successfully! 💰")
-                logger.info('\nTrade entered successfully!')
-                
-            except Exception as error:
-                logger.error(f"\nTrade failed with error: {error}\n")
-                update.effective_message.reply_text(f"There was an issue 😕\n\nError Message:\n{error}")
-    
-    except Exception as error:
-        logger.error(f'Error: {error}')
-        update.effective_message.reply_text(f"There was an issue with the connection 😕\n\nError Message:\n{error}")
-    
-    finally:
-        duration = time.time() - start_time
-        logger.info(f"Trade execution took {duration:.2f} seconds")
-
-# [Rest of the existing functions remain the same...]
 
 def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     """Calculates information from given trade including stop loss and take profit in pips, posiition size, and potential loss/profit.
@@ -342,6 +209,122 @@ def CreateTable(trade: dict, balance: float, stopLossPips: int, takeProfitPips: 
 
     return table
 
+async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
+    """Attempts connection to MetaAPI and MetaTrader to place trade.
+
+    Arguments:
+        update: update from Telegram
+        trade: dictionary that stores trade information
+
+    Returns:
+        A coroutine that confirms that the connection to MetaAPI/MetaTrader and trade placement were successful
+    """
+
+    # creates connection to MetaAPI
+    api = MetaApi(API_KEY)
+    
+    try:
+        account = await api.metatrader_account_api.get_account(ACCOUNT_ID)
+        initial_state = account.state
+        deployed_states = ['DEPLOYING', 'DEPLOYED']
+
+        if initial_state not in deployed_states:
+            #  wait until account is deployed and connected to broker
+            logger.info('Deploying account')
+            await account.deploy()
+
+        logger.info('Waiting for API server to connect to broker ...')
+        await account.wait_connected()
+
+        # connect to MetaApi API
+        connection = account.get_rpc_connection()
+        await connection.connect()
+
+        # wait until terminal state synchronized to the local state
+        logger.info('Waiting for SDK to synchronize to terminal state ...')
+        await connection.wait_synchronized()
+
+        # obtains account information from MetaTrader server
+        account_information = await connection.get_account_information()
+
+        # COMMENTMIKA update.effective_message.reply_text("Successfully connected to MetaTrader!\nCalculating trade risk ... 🤔")
+        update.effective_message.reply_text("Successfully connected to MetaTrader! 👌🏼")
+
+        # checks if the order is a market execution to get the current price of symbol
+        if(trade['Entry'] == 'NOW'):
+            price = await connection.get_symbol_price(symbol=trade['Symbol'])
+
+            # uses bid price if the order type is a buy
+            if(trade['OrderType'] == 'Buy'):
+                trade['Entry'] = float(price['bid'])
+                trade['StopLoss'] = float(price['bid']) - STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+
+            # uses ask price if the order type is a sell
+            if(trade['OrderType'] == 'Sell'):
+                trade['Entry'] = float(price['ask'])
+                trade['StopLoss'] = float(price['ask']) + STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
+                trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+
+        # produces a table with trade information
+        GetTradeInformation(update, trade, account_information['balance'])
+            
+        # checks if the user has indicated to enter trade
+        if(enterTrade == True):
+
+            # enters trade on to MetaTrader account
+            update.effective_message.reply_text("Entering trade on MetaTrader Account ... 👨🏾‍💻")
+
+            try:
+                # executes buy market execution order
+                if(trade['OrderType'] == 'Buy'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_market_buy_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['StopLoss'], takeProfit)
+
+                # executes buy limit order
+                elif(trade['OrderType'] == 'Buy Limit'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_limit_buy_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['Entry'], trade['StopLoss'], takeProfit)
+
+                # executes buy stop order
+                elif(trade['OrderType'] == 'Buy Stop'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_stop_buy_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['Entry'], trade['StopLoss'], takeProfit)
+
+                # executes sell market execution order
+                elif(trade['OrderType'] == 'Sell'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_market_sell_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['StopLoss'], takeProfit)
+
+                # executes sell limit order
+                elif(trade['OrderType'] == 'Sell Limit'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_limit_sell_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['Entry'], trade['StopLoss'], takeProfit)
+
+                # executes sell stop order
+                elif(trade['OrderType'] == 'Sell Stop'):
+                    for takeProfit in trade['TP']:
+                        result = await connection.create_stop_sell_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['Entry'], trade['StopLoss'], takeProfit)
+                
+                # sends success message to user
+                update.effective_message.reply_text("Trade entered successfully! 💰")
+                
+                # prints success message to console
+                logger.info('\nTrade entered successfully!')
+                logger.info('Result Code: {}\n'.format(result['stringCode']))
+            
+            except Exception as error:
+                logger.info(f"\nTrade failed with error: {error}\n")
+                update.effective_message.reply_text(f"There was an issue 😕\n\nError Message:\n{error}")
+    
+    except Exception as error:
+        logger.error(f'Error: {error}')
+        update.effective_message.reply_text(f"There was an issue with the connection 😕\n\nError Message:\n{error}")
+    
+    return
+
+
+# Handler Functions
 def PlaceTrade(update: Update, context: CallbackContext) -> int:
     """Parses trade and places on MetaTrader account."""
     
@@ -691,32 +674,76 @@ def Calculation_Command(update: Update, context: CallbackContext) -> int:
 
     return CALCULATE
 
+
 def main() -> None:
     """Runs the Telegram bot."""
+
     updater = Updater(TOKEN, use_context=True)
+
+    # get the dispatcher to register handlers
     dp = updater.dispatcher
 
+    # message handler
     dp.add_handler(CommandHandler("start", welcome))
+
+    # help command handler
     dp.add_handler(CommandHandler("help", help))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],
         states={
-            TRADE: [MessageHandler(Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), PlaceTrade)],
-            CALCULATE: [MessageHandler(Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), CalculateTrade)],
-            DECISION: [CommandHandler("yes", PlaceTrade), CommandHandler("no", cancel)]
+            TRADE: [
+                MessageHandler(
+                    Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), 
+                    PlaceTrade
+                )
+            ],
+            CALCULATE: [
+                MessageHandler(
+                    Filters.text & ~Filters.command & (Filters.chat_type.groups | Filters.chat_type.private), 
+                    CalculateTrade
+                )
+            ],
+            DECISION: [
+                CommandHandler("yes", PlaceTrade), 
+                CommandHandler("no", cancel)
+            ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True
     )
 
+    # conversation handler for entering trade or calculating trade information
     dp.add_handler(conv_handler)
-    dp.add_handler(MessageHandler(Filters.regex('^exit (buy|sell)$') & (Filters.chat_type.groups | Filters.chat_type.private), exit_trade_handler))
+
+    def detailed_error_handler(update: Update, context: CallbackContext):
+        """Log Errors caused by Updates with detailed information."""
+        logger.warning('Update "%s" caused error "%s"', update.to_dict(), context.error)
+        logger.warning('Error details:', exc_info=context.error)
+        
+        # Optionally notify the user about the error
+        if update.effective_message:
+            update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
+
+    dp.add_error_handler(detailed_error_handler)
+
+    # Add the exit trade handler with updated filters
+    dp.add_handler(MessageHandler(
+        Filters.regex('^exit (buy|sell)$') & (Filters.chat_type.groups | Filters.chat_type.private), 
+        exit_trade_handler
+    ))
+    
+    # message handler for all messages that are not included in conversation handler
     dp.add_handler(MessageHandler(Filters.text, unknown_command))
+
+    # log all errors
     dp.add_error_handler(error)
     
+    # listens for incoming updates from Telegram
     updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=APP_URL + TOKEN)
     updater.idle()
+
+    return
 
 if __name__ == '__main__':
     main()

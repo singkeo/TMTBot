@@ -330,7 +330,6 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
     """Parses trade and places on MetaTrader account."""
     
     # Add debug logging
-    logger.info(f"New trade request: Symbol={trade['Symbol']}, Size={trade['PositionSize']}")
     logger.info(f"Processing trade from chat ID: {update.effective_message.chat.id}")
     logger.info(f"Message content: {update.effective_message.text}")
     
@@ -363,6 +362,8 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
     
     # Clean up
     context.user_data['trade'] = None
+
+    logger.info(f"New trade request: Symbol={trade['Symbol']}, Size={trade['PositionSize']}")
     
     return ConversationHandler.END
 

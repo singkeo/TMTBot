@@ -184,7 +184,7 @@ def CreateTable(trade: dict, balance: float, stopLossPips: int, takeProfitPips: 
     table.add_row([trade["OrderType"] , trade["Symbol"]])
     # table.add_row(['Entry\n', trade['Entry']])
 
-    table.add_row(['Stop Loss', '{} pips'.format(stopLossPips)])
+    table.add_row(['Stop Loss', trade['StopLoss'])
 
     # for count, takeProfit in enumerate(takeProfitPips):
         # table.add_row([f'TP {count + 1}', f'{takeProfit} pips'])
@@ -259,12 +259,14 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 trade['Entry'] = float(price['bid'])
                 trade['StopLoss'] = float(price['bid']) - STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) + 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                logger.info(f"DEBUG: SL={trade['StopLoss']}")
 
             # uses ask price if the order type is a sell
             if(trade['OrderType'] == 'Sell'):
                 trade['Entry'] = float(price['ask'])
                 trade['StopLoss'] = float(price['ask']) + STOP_LOSS # COMMENTMIKA UPDATE 20.0 WITH ENV VAR
                 trade['TP'] = [float(price['bid']) - 200] # COMMENTMIKA UPDATE 200.0 WITH ENV VAR
+                logger.info(f"DEBUG: SL={trade['StopLoss']}")
 
         # produces a table with trade information
         GetTradeInformation(update, trade, account_information['balance'])
@@ -362,7 +364,7 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
     # Clean up
     context.user_data['trade'] = None
 
-    logger.info(f"New trade request: Symbol={trade['Symbol']}, Size={trade['PositionSize']}")
+    logger.info(f"New trade request: Symbol={trade['Symbol']}, Size={trade['PositionSize']}, SL={trade['StopLoss']}")
     
     return ConversationHandler.END
 

@@ -307,12 +307,12 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 # executes sell limit order
                 elif(trade['OrderType'] == 'Sell Limit'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_limit_sell_order(trade['Symbol'], trade['PositionSize']), trade['Entry'], trade['StopLoss'], takeProfit)
+                        result = await connection.create_limit_sell_order(trade['Symbol'], trade['PositionSize'], trade['Entry'], trade['StopLoss'], takeProfit)
 
                 # executes sell stop order
                 elif(trade['OrderType'] == 'Sell Stop'):
                     for takeProfit in trade['TP']:
-                        result = await connection.create_stop_sell_order(trade['Symbol'], trade['PositionSize']), trade['Entry'], trade['StopLoss'], takeProfit)
+                        result = await connection.create_stop_sell_order(trade['Symbol'], trade['PositionSize'], trade['Entry'], trade['StopLoss'], takeProfit)
                 
                 # sends success message to user
                 update.effective_message.reply_text("Trade entered successfully! 💰")

@@ -157,7 +157,7 @@ def GetTradeInformation(update: Update, trade: dict, balance: float) -> None:
     
     # sends user trade information and calcualted risk
     update.effective_message.reply_text(f'<pre>{table}</pre>', parse_mode=ParseMode.HTML)
-    update.effective_message.reply_text("Cooking... 👀😏")
+    # update.effective_message.reply_text("Cooking... 👀😏")
 
     return
 
@@ -281,7 +281,7 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
         if(enterTrade == True):
 
             # enters trade on to MetaTrader account
-            update.effective_message.reply_text("Entering trade on MetaTrader Account ... 👨🏾‍💻")
+            # update.effective_message.reply_text("Entering trade on MetaTrader Account ... 👨🏾‍💻")
 
             try:
                 # executes buy market execution order
@@ -350,7 +350,7 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
                 raise Exception('Invalid Trade')
 
             context.user_data['trade'] = trade
-            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
+            # update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... 👀")
         
         except Exception as error:
             logger.error(f'Error parsing trade: {error}')
@@ -544,6 +544,30 @@ def welcome(update: Update, context: CallbackContext) -> None:
 
     return
 
+async def ping_server(api_key, account_id):
+    start_time = time.time()
+    api = MetaApi(api_key)
+    try:
+        account = await api.metatrader_account_api.get_account(account_id)
+        await account.wait_connected()
+        connection = account.get_rpc_connection()
+        await connection.connect()
+        await connection.get_account_information()
+        end_time = time.time()
+        return True, round((end_time - start_time) * 1000, 2)
+    except Exception as e:
+        return False, str(e)
+
+def ping(update: Update, context: CallbackContext) -> None:
+    """Pings the MetaAPI server and reports the result."""
+    message = update.effective_message.reply_text("Pinging server...")
+    success, result = asyncio.run(ping_server(API_KEY, ACCOUNT_ID))
+    if success:
+        message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
+    else:
+        message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
+    return
+
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -553,13 +577,11 @@ def help(update: Update, context: CallbackContext) -> None:
     """
 
     help_message = "Toujours bien commencer la session avec la commande /start"
-    commands = "List des commandes:\n/start : à faire au début de chaque session\n/help : liste des commandes\n/trade : à faire avant de placer un trade\n"
+    commands = "List des commandes:\n/start : à faire au début de chaque session\n/help : liste des commandes\n/trade : à faire avant de placer un trade\n/cancel : à faire après un /trade pour cancel\n/ping : vérifier si le bot est en ligne"
     trade_example = "Exemples de trades possibles 💴:\n\n"
     market_execution_example = "Market Execution:\nBUY GBPUSD\nEntry NOW\nSL 1.14336\nTP 1.28930\nTP 1.29845\n\n"
     limit_example = "buy\nsell\nexit buy\nexit sell"
-    note = "You are able to enter up to two take profits. If two are entered, both trades will use half of the position size, and one will use TP1 while the other uses TP2.\n\nNote: Use 'NOW' as the entry to enter a market execution trade."
-
-    # sends messages to user
+    
     update.effective_message.reply_text(help_message)
     update.effective_message.reply_text(commands)
     update.effective_message.reply_text(trade_example + limit_example)
@@ -691,11 +713,9 @@ def main() -> None:
     # get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    # message handler
     dp.add_handler(CommandHandler("start", welcome))
-
-    # help command handler
     dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("ping", ping))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],
@@ -729,9 +749,14 @@ def main() -> None:
         logger.warning('Update "%s" caused error "%s"', update.to_dict(), context.error)
         logger.warning('Error details:', exc_info=context.error)
         
-        # Optionally notify the user about the error
-        if update.effective_message:
-            update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
+        # Check if the message is from mika or vitaly
+        if update.effective_message and update.effective_message.from_user:
+            username = update.effective_message.from_user.username
+            if username in ["msprs01", "@drosee92", "vitaly"]:
+                logger.info(f"Message sent")
+            else:
+                update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")
+
 
     dp.add_error_handler(detailed_error_handler)
 

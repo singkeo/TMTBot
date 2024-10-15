@@ -31,7 +31,7 @@ PORT = int(os.environ.get('PORT', '8443'))
 
 # ENV Variables
 LOT_SIZE = float(os.environ.get('LOT_SIZE', '6.0'))  # Default to 0.01 if not set
-STOP_LOSS = float(os.environ.get('STOP_LOSS', '4.55'))
+STOP_LOSS = float(os.environ.get('STOP_LOSS', '30.0'))
 TAKE_PROFIT = float(os.environ.get('TAKE_PROFIT', '200.0'))
 INDEX = os.environ.get('INDEX', 'AUS200.cash')
 

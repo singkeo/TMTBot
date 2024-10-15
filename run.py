@@ -555,18 +555,6 @@ async def ping_server(api_key, account_id):
         logger.info("Récupération du compte")
         account = await api.metatrader_account_api.get_account(account_id)
         
-        logger.info("Attente de la connexion du compte")
-        await account.wait_connected()
-        
-        logger.info("Obtention de la connexion RPC")
-        connection = account.get_rpc_connection()
-        
-        logger.info("Connexion au compte")
-        await connection.connect()
-        
-        logger.info("Récupération des informations du compte")
-        await connection.get_account_information()
-        
         end_time = time.time()
         logger.info("Ping réussi")
         return True, round((end_time - start_time) * 1000, 2)

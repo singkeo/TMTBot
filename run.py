@@ -545,27 +545,49 @@ def welcome(update: Update, context: CallbackContext) -> None:
     return
 
 async def ping_server(api_key, account_id):
+    logger.info("Démarrage de la fonction ping_server")
     start_time = time.time()
-    api = MetaApi(api_key)
     try:
+        logger.info("Initialisation de l'API MetaApi")
+        api = MetaApi(api_key)
+        
+        logger.info("Récupération du compte")
         account = await api.metatrader_account_api.get_account(account_id)
+        
+        logger.info("Attente de la connexion du compte")
         await account.wait_connected()
+        
+        logger.info("Obtention de la connexion RPC")
         connection = account.get_rpc_connection()
+        
+        logger.info("Connexion au compte")
         await connection.connect()
+        
+        logger.info("Récupération des informations du compte")
         await connection.get_account_information()
+        
         end_time = time.time()
+        logger.info("Ping réussi")
         return True, round((end_time - start_time) * 1000, 2)
     except Exception as e:
+        logger.error(f"Erreur lors du ping: {str(e)}", exc_info=True)
         return False, str(e)
 
 def ping(update: Update, context: CallbackContext) -> None:
     """Pings the MetaAPI server and reports the result."""
+    logger.info("Commande /ping reçue")
     message = update.effective_message.reply_text("Pinging server...")
-    success, result = asyncio.run(ping_server(API_KEY, ACCOUNT_ID))
-    if success:
-        message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
-    else:
-        message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
+    try:
+        success, result = asyncio.run(ping_server(API_KEY, ACCOUNT_ID))
+        if success:
+            logger.info(f"Ping réussi en {result}ms")
+            message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
+        else:
+            logger.warning(f"Échec du ping: {result}")
+            message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
+    except Exception as e:
+        logger.error(f"Erreur inattendue lors du ping: {str(e)}", exc_info=True)
+        message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
 def help(update: Update, context: CallbackContext) -> None:

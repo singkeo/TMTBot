@@ -48,6 +48,8 @@ SYMBOLS = ['FRA40.cash']
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
 
+# Dictionnaire pour stocker les messages de ping par chat_id
+ping_messages = {}
 
 # Helper Functions
 def ParseSignal(signal: str) -> dict:
@@ -562,43 +564,56 @@ async def ping_server(api_key, account_id):
         logger.error(f"Erreur lors du ping: {str(e)}", exc_info=True)
         return False, str(e)
 
-def ping(update: Update, context: CallbackContext) -> None:
+async def ping(update: Update, context: CallbackContext) -> None:
     """Pings the MetaAPI server and reports the result."""
     logger.info("Commande /ping reçue")
-    message = update.effective_message.reply_text("Pinging server...")
+    message = await update.effective_message.reply_text("Pinging server...")
     try:
-        success, result = asyncio.run(ping_server(API_KEY, ACCOUNT_ID))
+        success, result = await ping_server(API_KEY, ACCOUNT_ID)
         if success:
             logger.info(f"Ping réussi en {result}ms")
-            message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
+            await message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
         else:
             logger.warning(f"Échec du ping: {result}")
-            message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
+            await message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
     except Exception as e:
         logger.error(f"Erreur inattendue lors du ping: {str(e)}", exc_info=True)
-        message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
-    return
+        await message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
+    return message
 
 async def auto_ping(context: CallbackContext):
-    """Fonction pour effectuer le ping automatique en utilisant la fonction ping existante"""
+    """Fonction pour effectuer le ping automatique et mettre à jour le message existant"""
     job = context.job
     chat_id = job.context
     
-    # Création d'un faux objet Update pour simuler un message
-    fake_update = Update(0)
-    fake_update.effective_message = type('obj', (object,), {
-        'chat_id': chat_id,
-        'reply_text': lambda text, **kwargs: context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
-    })
+    logger.info("Démarrage de la fonction auto_ping")
     
-    # Utilisation de la fonction ping existante
-    await ping(fake_update, context)
+    if chat_id not in ping_messages or not isinstance(ping_messages[chat_id], Message):
+        # Si aucun message n'existe pour ce chat, en créer un nouveau
+        message = await context.bot.send_message(chat_id=chat_id, text="Initialisation du ping automatique...")
+        ping_messages[chat_id] = message
+        logger.info("INFO - Initialisation du ping automatique")
+    else:
+        message = ping_messages[chat_id]
+        logger.info("INFO - Ping automatique déjà activé")
+
+    try:
+        success, result = await ping_server(API_KEY, ACCOUNT_ID)
+        if success:
+            await message.edit_text(f"Dernier ping automatique (🏓): Succès\nTemps de réponse: {result}ms")
+        else:
+            await message.edit_text(f"Dernier ping automatique (❌): Échec\nErreur: {result}")
+    except Exception as e:
+        await message.edit_text(f"Erreur lors du ping automatique: {str(e)}")
 
 def start_auto_ping(update: Update, context: CallbackContext) -> None:
     """Démarre le ping automatique toutes les 5 minutes"""
     chat_id = update.effective_chat.id
-    context.job_queue.run_repeating(auto_ping, interval=10, first=0, context=chat_id, name=str(chat_id))
-    update.message.reply_text("Ping automatique activé. Il s'exécutera toutes les 5 minutes.")
+    if context.job_queue.get_jobs_by_name(str(chat_id)):
+        update.message.reply_text("Le ping automatique est déjà actif.")
+    else:
+        context.job_queue.run_repeating(auto_ping, interval=300, first=0, context=chat_id, name=str(chat_id))
+        update.message.reply_text("Ping automatique activé. Il s'exécutera toutes les 5 minutes.")
 
 def stop_auto_ping(update: Update, context: CallbackContext) -> None:
     """Arrête le ping automatique"""
@@ -608,6 +623,8 @@ def stop_auto_ping(update: Update, context: CallbackContext) -> None:
         for job in current_jobs:
             job.schedule_removal()
         update.message.reply_text("Ping automatique désactivé.")
+        if chat_id in ping_messages:
+            del ping_messages[chat_id]
     else:
         update.message.reply_text("Aucun ping automatique n'était actif.")
 

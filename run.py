@@ -763,7 +763,7 @@ def main() -> None:
         # Check if the message is from mika or vitaly
         if update.effective_message and update.effective_message.from_user:
             username = update.effective_message.from_user.username
-            if username in ["msprs01", "@drosee92", "vitaly"]:
+            if username in ["msprs01", "drosee92", "Vitaliy_YOUNOX"]:
                 logger.info(f"Message sent")
             else:
                 update.effective_message.reply_text("Sorry, an error occurred. The administrator has been notified.")

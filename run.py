@@ -579,51 +579,6 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
-async def autoping(update: Update, context: CallbackContext) -> None:
-    """Automatically sends a /ping command at random intervals until stopped."""
-    logger.info("Commande /autoping reçue")
-    
-    # Arrêter toute tâche autoping existante
-    if 'autoping_task' in context.chat_data:
-        context.chat_data['autoping_task'].cancel()
-    
-    # Créer une nouvelle tâche autoping
-    context.chat_data['autoping_active'] = True
-    context.chat_data['autoping_task'] = asyncio.create_task(autoping_loop(update, context))
-    
-    await update.effective_message.reply_text("Autoping démarré. Utilisez /stopping pour arrêter.")
-
-async def autoping_loop(update: Update, context: CallbackContext) -> None:
-    """Loop that sends ping commands at random intervals."""
-    while context.chat_data.get('autoping_active', False):
-        # Envoyer la commande /ping dans le chat
-        ping_message = await update.effective_message.reply_text("/ping")
-        
-        # Créer un faux update avec la commande /ping
-        fake_update = Update(update.update_id, message=ping_message)
-        
-        # Exécuter la fonction ping
-        await ping(fake_update, context)
-        
-        # Attendre un intervalle aléatoire entre 10 et 300 secondes
-        wait_time = random.randint(10, 15)
-        try:
-            await asyncio.sleep(wait_time)
-        except asyncio.CancelledError:
-            break
-
-async def stopping(update: Update, context: CallbackContext) -> None:
-    """Stops the autoping loop."""
-    logger.info("Commande /stopping reçue")
-    
-    if 'autoping_task' in context.chat_data:
-        context.chat_data['autoping_active'] = False
-        context.chat_data['autoping_task'].cancel()
-        del context.chat_data['autoping_task']
-        await update.effective_message.reply_text("Autoping arrêté.")
-    else:
-        await update.effective_message.reply_text("Aucun autoping n'est actuellement actif.")
-
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -772,9 +727,7 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
-    dp.add_handler(CommandHandler("autoping", autoping))
-    dp.add_handler(CommandHandler("stopping", stopping))
-    
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],
         states={

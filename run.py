@@ -48,8 +48,6 @@ SYMBOLS = ['FRA40.cash']
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
 
-# Dictionnaire pour stocker les messages de ping par chat_id
-ping_messages = {}
 
 # Helper Functions
 def ParseSignal(signal: str) -> dict:
@@ -564,69 +562,22 @@ async def ping_server(api_key, account_id):
         logger.error(f"Erreur lors du ping: {str(e)}", exc_info=True)
         return False, str(e)
 
-async def ping(update: Update, context: CallbackContext) -> None:
+def ping(update: Update, context: CallbackContext) -> None:
     """Pings the MetaAPI server and reports the result."""
     logger.info("Commande /ping reçue")
-    message = await update.effective_message.reply_text("Pinging server...")
+    message = update.effective_message.reply_text("Pinging server...")
     try:
-        success, result = await ping_server(API_KEY, ACCOUNT_ID)
+        success, result = asyncio.run(ping_server(API_KEY, ACCOUNT_ID))
         if success:
             logger.info(f"Ping réussi en {result}ms")
-            await message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
+            message.edit_text(f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
         else:
             logger.warning(f"Échec du ping: {result}")
-            await message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
+            message.edit_text(f"Échec du ping! ❌\nErreur: {result}")
     except Exception as e:
         logger.error(f"Erreur inattendue lors du ping: {str(e)}", exc_info=True)
-        await message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
-    return message
-
-async def auto_ping(context: CallbackContext):
-    """Fonction pour effectuer le ping automatique et mettre à jour le message existant"""
-    job = context.job
-    chat_id = job.context
-    
-    logger.info("Démarrage de la fonction auto_ping")
-    
-    if chat_id not in ping_messages or not isinstance(ping_messages[chat_id], Message):
-        # Si aucun message n'existe pour ce chat, en créer un nouveau
-        message = await context.bot.send_message(chat_id=chat_id, text="Initialisation du ping automatique...")
-        ping_messages[chat_id] = message
-        logger.info("INFO - Initialisation du ping automatique")
-    else:
-        message = ping_messages[chat_id]
-        logger.info("INFO - Ping automatique déjà activé")
-
-    try:
-        success, result = await ping_server(API_KEY, ACCOUNT_ID)
-        if success:
-            await message.edit_text(f"Dernier ping automatique (🏓): Succès\nTemps de réponse: {result}ms")
-        else:
-            await message.edit_text(f"Dernier ping automatique (❌): Échec\nErreur: {result}")
-    except Exception as e:
-        await message.edit_text(f"Erreur lors du ping automatique: {str(e)}")
-
-def start_auto_ping(update: Update, context: CallbackContext) -> None:
-    """Démarre le ping automatique toutes les 5 minutes"""
-    chat_id = update.effective_chat.id
-    if context.job_queue.get_jobs_by_name(str(chat_id)):
-        update.message.reply_text("Le ping automatique est déjà actif.")
-    else:
-        context.job_queue.run_repeating(auto_ping, interval=300, first=0, context=chat_id, name=str(chat_id))
-        update.message.reply_text("Ping automatique activé. Il s'exécutera toutes les 5 minutes.")
-
-def stop_auto_ping(update: Update, context: CallbackContext) -> None:
-    """Arrête le ping automatique"""
-    chat_id = update.effective_chat.id
-    current_jobs = context.job_queue.get_jobs_by_name(str(chat_id))
-    if current_jobs:
-        for job in current_jobs:
-            job.schedule_removal()
-        update.message.reply_text("Ping automatique désactivé.")
-        if chat_id in ping_messages:
-            del ping_messages[chat_id]
-    else:
-        update.message.reply_text("Aucun ping automatique n'était actif.")
+        message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
+    return
 
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
@@ -776,8 +727,6 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
-    dp.add_handler(CommandHandler("startping", start_auto_ping))
-    dp.add_handler(CommandHandler("stopping", stop_auto_ping))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],

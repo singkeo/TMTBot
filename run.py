@@ -15,12 +15,6 @@ from prettytable import PrettyTable
 from telegram import ParseMode, Update
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, ConversationHandler, CallbackContext
 
-# Ajoutez ces imports si ce n'est pas déjà fait
-from telegram.ext import JobQueue
-
-# Variable globale pour stocker le job de ping
-ping_job = None
-
 # MetaAPI Credentials
 API_KEY = os.environ.get("API_KEY")
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
@@ -585,54 +579,6 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
-async def periodic_ping(context: CallbackContext):
-    chat_id = context.job.context
-    logger.info(f"Démarrage du ping périodique pour chat_id: {chat_id}")
-    
-    try:
-        success, result = await ping_server(API_KEY, ACCOUNT_ID)
-        logger.info(f"Résultat du ping: success={success}, result={result}")
-        
-        if success:
-            message = f"Ping automatique réussi! 🏓\nTemps de réponse: {result}ms"
-        else:
-            message = f"Échec du ping automatique! ❌\nErreur: {result}"
-        
-        logger.info(f"Tentative d'envoi du message: {message}")
-        sent_message = await context.bot.send_message(chat_id=chat_id, text=message)
-        logger.info(f"Message envoyé avec succès: {sent_message.message_id}")
-    except Exception as e:
-        logger.error(f"Erreur lors du ping périodique: {str(e)}", exc_info=True)
-        try:
-            await context.bot.send_message(chat_id=chat_id, text=f"Erreur lors du ping périodique: {str(e)}")
-        except Exception as send_error:
-            logger.error(f"Impossible d'envoyer le message d'erreur: {str(send_error)}", exc_info=True)
-
-def start_ping(update: Update, context: CallbackContext) -> None:
-    global ping_job
-    chat_id = update.effective_chat.id
-    logger.info(f"Commande /startping reçue. Chat ID: {chat_id}")
-    
-    if ping_job:
-        update.message.reply_text("Le ping automatique est déjà en cours.")
-        return
-
-    ping_job = context.job_queue.run_repeating(periodic_ping, interval=300, first=0, context=chat_id)
-    update.message.reply_text("Ping automatique démarré. Il s'exécutera toutes les 5 minutes.")
-    logger.info(f"Ping automatique démarré pour chat_id: {chat_id}")
-
-def stop_ping(update: Update, context: CallbackContext) -> None:
-    global ping_job
-    logger.info("Commande /stopping reçue")
-    if ping_job:
-        ping_job.schedule_removal()
-        ping_job = None
-        update.message.reply_text("Ping automatique arrêté.")
-        logger.info("Ping automatique arrêté")
-    else:
-        update.message.reply_text("Aucun ping automatique n'est en cours.")
-        logger.info("Tentative d'arrêt du ping automatique, mais aucun n'était en cours")
-
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -781,8 +727,6 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
-    dp.add_handler(CommandHandler("startping", start_ping))
-    dp.add_handler(CommandHandler("stopping", stop_ping))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],

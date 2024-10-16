@@ -4,7 +4,6 @@ import logging
 import math
 import os
 import time
-import random
 
 try:
     from typing import Literal
@@ -14,7 +13,7 @@ except ImportError:
 from metaapi_cloud_sdk import MetaApi
 from prettytable import PrettyTable
 from telegram import ParseMode, Update
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, ConversationHandler, CallbackContext, run_async
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, ConversationHandler, CallbackContext
 
 # MetaAPI Credentials
 API_KEY = os.environ.get("API_KEY")
@@ -48,7 +47,7 @@ SYMBOLS = ['FRA40.cash']
 
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
-CHANNEL_ID = '@NomDuCanal'
+
 
 # Helper Functions
 def ParseSignal(signal: str) -> dict:
@@ -580,49 +579,6 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
-@run_async
-async def auto_ping(update: Update, context: CallbackContext) -> None:
-    """Starts the automatic ping to the MetaAPI server at regular intervals and sends results to a Telegram channel."""
-    logger.info("Commande /autoping reçue")
-    
-    message = update.effective_message.reply_text("Auto-ping started! Pinging every 10 to 15 seconds...")
-    
-    while True:
-        try:
-            success, result = await ping_server(API_KEY, ACCOUNT_ID)
-            if success:
-                logger.info(f"Auto-ping réussi en {result}ms")
-                ping_message = f"Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms"
-                message.edit_text(ping_message)
-                
-                # Envoi du message dans le canal Telegram
-                context.bot.send_message(chat_id=CHANNEL_ID, text=ping_message)
-            else:
-                logger.warning(f"Échec de l'auto-ping: {result}")
-                ping_message = f"Échec du ping! ❌\nErreur: {result}"
-                message.edit_text(ping_message)
-                
-                # Envoi du message d'erreur dans le canal Telegram
-                context.bot.send_message(chat_id=CHANNEL_ID, text=ping_message)
-        except Exception as e:
-            logger.error(f"Erreur inattendue lors de l'auto-ping: {str(e)}", exc_info=True)
-            ping_message = f"Erreur inattendue lors de l'auto-ping. Veuillez vérifier les logs."
-            message.edit_text(ping_message)
-            
-            # Envoi du message d'erreur dans le canal Telegram
-            context.bot.send_message(chat_id=CHANNEL_ID, text=ping_message)
-
-        # Attendre un intervalle aléatoire entre 10 et 15 secondes avant le prochain ping
-        await asyncio.sleep(random.randint(10, 15))
-
-def stop_auto_ping(update: Update, context: CallbackContext) -> None:
-    """Stops the automatic ping."""
-    logger.info("Commande /stopautoping reçue")
-    message = update.effective_message.reply_text("Auto-ping stopped.")
-    # On pourrait ajouter de la logique pour vraiment arrêter l'auto-ping si c'était dans un autre thread/tâche.
-    context.job_queue.stop()
-    return
-
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -759,9 +715,6 @@ def Calculation_Command(update: Update, context: CallbackContext) -> int:
 
     return CALCULATE
 
-def get_chat_id(update: Update, context: CallbackContext) -> None:
-    chat_id = update.effective_chat.id
-    update.message.reply_text(f"Chat ID: {chat_id}")
 
 def main() -> None:
     """Runs the Telegram bot."""
@@ -774,9 +727,6 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
-    dp.add_handler(CommandHandler("autoping", auto_ping))
-    dp.add_handler(CommandHandler("stopautoping", stop_auto_ping))
-    dp.add_handler(CommandHandler("getid", get_chat_id))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],

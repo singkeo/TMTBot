@@ -580,19 +580,19 @@ def ping(update: Update, context: CallbackContext) -> None:
     return
 
 async def auto_ping(context: CallbackContext):
-    """Fonction pour effectuer le ping automatique et afficher le résultat dans la conversation"""
+    """Fonction pour effectuer le ping automatique en utilisant la fonction ping existante"""
     job = context.job
     chat_id = job.context
     
-    # Utilisation de la fonction ping_server existante
-    success, result = await ping_server(API_KEY, ACCOUNT_ID)
+    # Création d'un faux objet Update pour simuler un message
+    fake_update = Update(0)
+    fake_update.effective_message = type('obj', (object,), {
+        'chat_id': chat_id,
+        'reply_text': lambda text, **kwargs: context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
+    })
     
-    if success:
-        message = f"Ping automatique réussi! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms"
-    else:
-        message = f"Échec du ping automatique! ❌\nErreur: {result}"
-    
-    await context.bot.send_message(chat_id=chat_id, text=message)
+    # Utilisation de la fonction ping existante
+    await ping(fake_update, context)
 
 def start_auto_ping(update: Update, context: CallbackContext) -> None:
     """Démarre le ping automatique toutes les 5 minutes"""

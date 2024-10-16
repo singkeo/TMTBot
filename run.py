@@ -4,7 +4,6 @@ import logging
 import math
 import os
 import time
-import random
 
 try:
     from typing import Literal
@@ -580,45 +579,6 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
-async def autoping_task(context: CallbackContext):
-    logger.info("Démarrage de la tâche autoping")
-    update.effective_message.reply_text("Démarrage de la tâche autoping")
-    chat_id = context.job.context
-    while True:
-        logger.debug("Appel de la fonction ping")
-        update.effective_message.reply_text("Appel fonction ping")
-        success, result = await ping_server(API_KEY, ACCOUNT_ID)
-        if success:
-            logger.info(f"Ping réussi en {result}ms")
-            await context.bot.send_message(chat_id, f"Autoping: Pong! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms")
-        else:
-            logger.warning(f"Échec du ping: {result}")
-            await context.bot.send_message(chat_id, f"Autoping: Échec du ping! ❌\nErreur: {result}")
-        
-        wait_time = random.randint(10, 15)
-        logger.debug(f"Attente de {wait_time} secondes avant le prochain ping")
-        update.effective_message.reply_text("Attention avant prochain ping")
-        await asyncio.sleep(wait_time)
-
-def autoping(update: Update, context: CallbackContext) -> None:
-    logger.info("Commande /autoping reçue")
-    update.effective_message.reply_text("/autoping reçu")
-    chat_id = update.effective_chat.id
-    
-    # Vérifier si une tâche autoping est déjà en cours
-    if 'autoping_job' in context.chat_data:
-        logger.info("Une tâche autoping est déjà en cours, arrêt de la tâche existante")
-        update.effective_message.reply_text("Tâche autoping déjà en cours")
-        context.chat_data['autoping_job'].schedule_removal()
-        del context.chat_data['autoping_job']
-        update.message.reply_text("Tâche autoping précédente arrêtée.")
-    
-    logger.info("Démarrage d'une nouvelle tâche autoping")
-    update.effective_message.reply_text("Démarrage d'une nouvelle tâche autoping")
-    job = context.job_queue.run_once(autoping_task, 0, context=chat_id)
-    context.chat_data['autoping_job'] = job
-    update.message.reply_text("Tâche autoping démarrée. Les pings seront envoyés toutes les 10 à 15 secondes.")
-
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -767,7 +727,6 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
-    dp.add_handler(CommandHandler("autoping", autoping))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],

@@ -14,7 +14,7 @@ except ImportError:
 from metaapi_cloud_sdk import MetaApi
 from prettytable import PrettyTable
 from telegram import ParseMode, Update
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, ConversationHandler, CallbackContext
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, ConversationHandler, CallbackContext, run_async
 
 # MetaAPI Credentials
 API_KEY = os.environ.get("API_KEY")
@@ -580,6 +580,7 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
+@run_async
 async def auto_ping(update: Update, context: CallbackContext) -> None:
     """Starts the automatic ping to the MetaAPI server at regular intervals and sends results to a Telegram channel."""
     logger.info("Commande /autoping reçue")

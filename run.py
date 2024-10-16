@@ -587,32 +587,51 @@ def ping(update: Update, context: CallbackContext) -> None:
 
 async def periodic_ping(context: CallbackContext):
     chat_id = context.job.context
-    success, result = await ping_server(API_KEY, ACCOUNT_ID)
-    if success:
-        message = f"Ping automatique réussi! 🏓\nTemps de réponse: {result}ms"
-    else:
-        message = f"Échec du ping automatique! ❌\nErreur: {result}"
-    await context.bot.send_message(chat_id=chat_id, text=message)
+    logger.info(f"Démarrage du ping périodique pour chat_id: {chat_id}")
+    
+    try:
+        success, result = await ping_server(API_KEY, ACCOUNT_ID)
+        logger.info(f"Résultat du ping: success={success}, result={result}")
+        
+        if success:
+            message = f"Ping automatique réussi! 🏓\nTemps de réponse: {result}ms"
+        else:
+            message = f"Échec du ping automatique! ❌\nErreur: {result}"
+        
+        logger.info(f"Tentative d'envoi du message: {message}")
+        sent_message = await context.bot.send_message(chat_id=chat_id, text=message)
+        logger.info(f"Message envoyé avec succès: {sent_message.message_id}")
+    except Exception as e:
+        logger.error(f"Erreur lors du ping périodique: {str(e)}", exc_info=True)
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=f"Erreur lors du ping périodique: {str(e)}")
+        except Exception as send_error:
+            logger.error(f"Impossible d'envoyer le message d'erreur: {str(send_error)}", exc_info=True)
 
 def start_ping(update: Update, context: CallbackContext) -> None:
     global ping_job
     chat_id = update.effective_chat.id
+    logger.info(f"Commande /startping reçue. Chat ID: {chat_id}")
     
     if ping_job:
         update.message.reply_text("Le ping automatique est déjà en cours.")
         return
 
-    ping_job = context.job_queue.run_repeating(periodic_ping, interval=10, first=0, context=chat_id)
+    ping_job = context.job_queue.run_repeating(periodic_ping, interval=300, first=0, context=chat_id)
     update.message.reply_text("Ping automatique démarré. Il s'exécutera toutes les 5 minutes.")
+    logger.info(f"Ping automatique démarré pour chat_id: {chat_id}")
 
 def stop_ping(update: Update, context: CallbackContext) -> None:
     global ping_job
+    logger.info("Commande /stopping reçue")
     if ping_job:
         ping_job.schedule_removal()
         ping_job = None
         update.message.reply_text("Ping automatique arrêté.")
+        logger.info("Ping automatique arrêté")
     else:
         update.message.reply_text("Aucun ping automatique n'est en cours.")
+        logger.info("Tentative d'arrêt du ping automatique, mais aucun n'était en cours")
 
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued

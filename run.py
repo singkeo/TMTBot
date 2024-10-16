@@ -579,6 +579,38 @@ def ping(update: Update, context: CallbackContext) -> None:
         message.edit_text(f"Erreur inattendue lors du ping. Veuillez vérifier les logs.")
     return
 
+async def auto_ping(context: CallbackContext):
+    """Fonction pour effectuer le ping automatique et afficher le résultat dans la conversation"""
+    job = context.job
+    chat_id = job.context
+    
+    # Utilisation de la fonction ping_server existante
+    success, result = await ping_server(API_KEY, ACCOUNT_ID)
+    
+    if success:
+        message = f"Ping automatique réussi! 🏓\nLe serveur est accessible.\nTemps de réponse: {result}ms"
+    else:
+        message = f"Échec du ping automatique! ❌\nErreur: {result}"
+    
+    await context.bot.send_message(chat_id=chat_id, text=message)
+
+def start_auto_ping(update: Update, context: CallbackContext) -> None:
+    """Démarre le ping automatique toutes les 5 minutes"""
+    chat_id = update.effective_chat.id
+    context.job_queue.run_repeating(auto_ping, interval=10, first=0, context=chat_id, name=str(chat_id))
+    update.message.reply_text("Ping automatique activé. Il s'exécutera toutes les 5 minutes.")
+
+def stop_auto_ping(update: Update, context: CallbackContext) -> None:
+    """Arrête le ping automatique"""
+    chat_id = update.effective_chat.id
+    current_jobs = context.job_queue.get_jobs_by_name(str(chat_id))
+    if current_jobs:
+        for job in current_jobs:
+            job.schedule_removal()
+        update.message.reply_text("Ping automatique désactivé.")
+    else:
+        update.message.reply_text("Aucun ping automatique n'était actif.")
+
 def help(update: Update, context: CallbackContext) -> None:
     """Sends a help message when the command /help is issued
 
@@ -727,6 +759,8 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", welcome))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("ping", ping))
+    dp.add_handler(CommandHandler("startping", start_auto_ping))
+    dp.add_handler(CommandHandler("stopping", stop_auto_ping))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("trade", Trade_Command, filters=Filters.chat_type.groups | Filters.chat_type.private)],
